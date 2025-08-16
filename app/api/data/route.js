@@ -36,14 +36,17 @@ export async function GET(req){
     }
   }
 
-  const rows = ORDER.map(t=>{
-    const meta = TYPE_MAP[t];
-    const vals = limited.map(ts=>{
-      const v = byType[t]?.[ts];
-      return v === undefined ? '' : v.toFixed(meta.dp);
-    });
-    return { label: meta.name, unit: meta.unit, values: vals };
+  const rows = ORDER.map(t => {
+  const meta = TYPE_MAP[t];
+  const vals = limited.map(ts => {
+    const v = byType[t]?.[ts];
+    return v === undefined ? '' : v.toFixed(meta.dp);
   });
+  // ➜ přidáváme type, abychom mohli na klientu 100% řadit podle ID
+  return { type: t, label: meta.name, unit: meta.unit, values: vals };
+});
+
+
 
   const cards = rows.slice(0,6).map(r=>({ label:r.label, value:r.values[0], unit:r.unit }));
   return NextResponse.json({ status: 0, dates, rows, cards });
