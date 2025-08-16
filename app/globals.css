@@ -3,3 +3,17 @@
 @tailwind utilities;
 
 body { @apply bg-slate-900 text-slate-100; }
+
+/* tmavé pozadí a světlý text i při autofillu (Chrome/Safari) */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus {
+  -webkit-text-fill-color: #e2e8f0;          /* text-slate-200/100 */
+  -webkit-box-shadow: 0 0 0px 1000px #0f172a inset; /* bg-slate-900 */
+  transition: background-color 9999s ease-in-out 0s;
+}
+
+/* ztmavit ikonu kalendáře, ať není světlá na tmavém pozadí */
+input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+}
