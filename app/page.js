@@ -33,11 +33,11 @@ function KpiCard({ label, value, unit }) {
 
 function HistoryTable({ dates, rows }) {
   // vždy dej Váhu (type 1) na první místo
-  const ordered = [...rows].sort((a, b) => a.type === 1 ? -1 : b.type === 1 ? 1 : 0);
+  const ordered = [...rows].sort((a, b) => (a.type === 1 ? -1 : b.type === 1 ? 1 : 0));
 
   return (
-    <div>
-      <table className="w-full text-sm border-collapse">
+    <div className="overflow-x-auto">
+      <table className="w-full min-w-max text-sm border-collapse">
         <thead>
           <tr>
             <th className="text-left p-3 border-b border-slate-800">Metrika</th>
@@ -62,7 +62,6 @@ function HistoryTable({ dates, rows }) {
     </div>
   );
 }
-
 
 // CSV export helper
 function buildCSV(dates, rows) {
@@ -90,42 +89,42 @@ export default function Page() {
     }
   },[]);
 
-  // B) Načtení dat s automatickým refreshem access tokenu
-  async function fetchDataWithRefresh() {
-    let at = localStorage.getItem('withings_at');
-    let rt = localStorage.getItem('withings_rt');
-    if (!at) return; // zatím zůstane mock, dokud se nepřihlásíš
+// B) Načtení dat s automatickým refreshem access tokenu
+async function fetchDataWithRefresh() {
+  let at = localStorage.getItem('withings_at');
+  let rt = localStorage.getItem('withings_rt');
+  if (!at) return; // zatím zůstane mock, dokud se nepřihlásíš
 
-    // 1) pokus o načtení dat
-    let r = await fetch('/api/data?at=' + encodeURIComponent(at));
-    let payload = await r.json().catch(()=>null);
+  // 1) pokus o načtení dat – VEM VŠECHNA měření (limit=0)
+  let r = await fetch('/api/data?at=' + encodeURIComponent(at) + '&limit=0');
+  let payload = await r.json().catch(()=>null);
 
-    // 2) když to nevyjde, zkus refresh přes refresh_token
-    if (!payload || payload.status !== 0) {
-      if (!rt) return;
-      const rr = await fetch('/api/withings/refresh', {
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ refresh_token: rt })
-      });
-      const refreshed = await rr.json().catch(()=>null);
-      if (refreshed && refreshed.status === 0) {
-        at = refreshed.access_token;
-        rt = refreshed.refresh_token || rt; // někdy přijde nový RT
-        localStorage.setItem('withings_at', at);
-        localStorage.setItem('withings_rt', rt);
-        // zkus znovu data
-        const r2 = await fetch('/api/data?at=' + encodeURIComponent(at));
-        payload = await r2.json().catch(()=>null);
-      }
-    }
-
-    if (payload && payload.status === 0) {
-      setDates(payload.dates);
-      setRows(payload.rows);
-      setCards(payload.cards);
+  // 2) když to nevyjde, zkus refresh přes refresh_token
+  if (!payload || payload.status !== 0) {
+    if (!rt) return;
+    const rr = await fetch('/api/withings/refresh', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ refresh_token: rt })
+    });
+    const refreshed = await rr.json().catch(()=>null);
+    if (refreshed && refreshed.status === 0) {
+      at = refreshed.access_token;
+      rt = refreshed.refresh_token || rt; // někdy přijde nový RT
+      localStorage.setItem('withings_at', at);
+      localStorage.setItem('withings_rt', rt);
+      // zkus znovu data – zase s limit=0 (všechna měření)
+      const r2 = await fetch('/api/data?at=' + encodeURIComponent(at) + '&limit=0');
+      payload = await r2.json().catch(()=>null);
     }
   }
+
+  if (payload && payload.status === 0) {
+    setDates(payload.dates);
+    setRows(payload.rows);
+    setCards(payload.cards);
+  }
+}
 
   // C) Spusť načtení po mountu (a kdykoli stránku znovu otevřeš)
   useEffect(()=>{ fetchDataWithRefresh(); },[]);
@@ -182,10 +181,7 @@ export default function Page() {
         </section>
 
         <section className="col-span-12 lg:col-span-8 rounded-2xl border border-slate-800 bg-slate-900/60">
-          <div className="p-4 flex items-center justify-between gap-3 border-b border-slate-800">
-            <span className="text-xs text-slate-400">Sloupce: nejnovější → starší</span>
-            <span className="text-xs text-slate-400 px-2 py-1 rounded-full border border-slate-700">Počet: {dates.length}</span>
-          </div>
+          
           <HistoryTable dates={dates} rows={rows} />
         </section>
 
@@ -194,20 +190,7 @@ export default function Page() {
           <div className="text-sm text-slate-300 leading-relaxed bg-slate-900 border border-slate-800 rounded-xl p-3">
             Váha klesá ~0,5 kg týdně, tělesný tuk % mírně klesá a svalová hmota zůstává stabilní.
           </div>
-          <div className="mt-4 rounded-xl border border-slate-800 bg-slate-900/60 p-4">
-            <div className="font-semibold mb-2">Internal tests</div>
-            <ul className="space-y-1 text-sm">
-              <li className={rows.every(r => r.values.length === dates.length) ? 'text-emerald-400':'text-rose-400'}>
-                {rows.every(r => r.values.length === dates.length) ? '✔' : '✖'} Row length matches dates length
-              </li>
-              <li className={(rows.length > 0 && dates.length > 0) ? 'text-emerald-400':'text-rose-400'}>
-                {(rows.length > 0 && dates.length > 0) ? '✔' : '✖'} Non-empty rows & dates
-              </li>
-              <li className={(rows[0]?.label === 'Váha') ? 'text-emerald-400':'text-rose-400'}>
-                {(rows[0]?.label === 'Váha') ? '✔' : '✖'} First row is Váha
-              </li>
-            </ul>
-          </div>
+          
         </section>
       </main>
     </div>
