@@ -32,10 +32,13 @@ function KpiCard({ label, value, unit }) {
 }
 
 function HistoryTable({ dates, rows }) {
+  // vždy dej Váhu (type 1) na první místo
+  const ordered = [...rows].sort((a, b) => a.type === 1 ? -1 : b.type === 1 ? 1 : 0);
+
   return (
-    <div className="overflow-auto">
-      <table className="w-full text-sm">
-        <thead className="sticky top-[57px] bg-slate-900">
+    <div>
+      <table className="w-full text-sm border-collapse">
+        <thead>
           <tr>
             <th className="text-left p-3 border-b border-slate-800">Metrika</th>
             <th className="text-left p-3 border-b border-slate-800">Jedn.</th>
@@ -45,7 +48,7 @@ function HistoryTable({ dates, rows }) {
           </tr>
         </thead>
         <tbody>
-          {rows.map((r, i) => (
+          {ordered.map((r, i) => (
             <tr key={i} className={i % 2 ? 'bg-slate-900/40' : ''}>
               <td className="p-3 border-b border-slate-800">{r.label}</td>
               <td className="p-3 border-b border-slate-800 text-slate-400">{r.unit}</td>
@@ -59,6 +62,7 @@ function HistoryTable({ dates, rows }) {
     </div>
   );
 }
+
 
 // CSV export helper
 function buildCSV(dates, rows) {
