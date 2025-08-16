@@ -40,23 +40,20 @@ export async function GET(req) {
 
   let grps = res.body?.measuregrps || [];
 
-  // Filtrování na serveru dle času měření (g.date je UNIX sec UTC)
+  // Filtrování dle času měření (g.date je UNIX sec UTC)
   if (hasFrom) grps = grps.filter(g => g.date >= from);
   if (hasTo)   grps = grps.filter(g => g.date <= to);
 
-  // Unikátní timestampy (nejnovější → starší)
+  // Unikátní časové body (nejnovější → starší)
   const seen = new Set();
   const cols = [];
   [...grps].sort((a, b) => b.date - a.date).forEach(g => {
-    if (!seen.has(g.date)) {
-      cols.push(g.date);
-      seen.add(g.date);
-    }
+    if (!seen.has(g.date)) { cols.push(g.date); seen.add(g.date); }
   });
 
   const selectedTs = hasLimit ? cols.slice(0, limitParam) : cols;
 
-  // Časy formátujeme v CZ lokalizaci a CZ časové zóně
+  // Formátované datumy v CZ zóně (jen pro zobrazení v tabulce)
   const dates = selectedTs.map(ts =>
     new Date(ts * 1000).toLocaleString('cs-CZ', { timeZone: 'Europe/Prague' })
   );
@@ -71,7 +68,7 @@ export async function GET(req) {
     }
   }
 
-  // Řádky v pořadí ORDER; přidáváme type kvůli stabilnímu řazení na klientu
+  // Řádky v pořadí ORDER
   const rows = ORDER.map(t => {
     const meta = TYPE_MAP[t];
     const vals = selectedTs.map(ts => {
@@ -81,12 +78,13 @@ export async function GET(req) {
     return { type: t, label: meta.name, unit: meta.unit, values: vals };
   });
 
-  // KPI karty (první hodnota každé metriky, pokud existuje)
+  // KPI karty – první (nejnovější) hodnoty
   const cards = rows.slice(0, 6).map(r => ({
     label: r.label,
     value: r.values[0],
     unit: r.unit,
   }));
 
-  return NextResponse.json({ status: 0, dates, rows, cards });
+  // ➜ přidáváme i syrové timestampy pro přesné výpočty na klientu
+  return NextResponse.json({ status: 0, dates, rows, cards, timestamps: selectedTs });
 }
