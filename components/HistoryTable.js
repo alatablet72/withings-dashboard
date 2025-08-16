@@ -1,1 +1,38 @@
-'use client'; export default function HistoryTable({dates,rows}){const weight=rows.find(r=>r.label==='Váha');const rest=rows.filter(r=>r.label!=='Váha');const ordered=[...(weight?[weight]:[]),...rest];return(<div><table className="w-full text-sm"><thead className="bg-slate-900"><tr><th className="text-left p-3 border-b border-slate-800">Metrika</th><th className="text-left p-3 border-b border-slate-800">Jedn.</th>{dates.map((d,i)=>(<th key={i} className="text-right p-3 border-b border-slate-800 whitespace-nowrap">{d}</th>))}</tr></thead><tbody>{ordered.map((r,i)=>(<tr key={i} className={i%2?'bg-slate-900/40':''}><td className="p-3 border-b border-slate-800">{r.label}</td><td className="p-3 border-b border-slate-800 text-slate-400">{r.unit}</td>{r.values.map((v,j)=>(<td key={j} className="p-3 border-b border-slate-800 text-right">{v}</td>))}</tr>))}</tbody></table></div>);}
+'use client';
+
+export default function HistoryTable({ dates, rows }) {
+  // 1) Poskládáme pořadí: Váha -> BMI (počítáno) -> ostatní
+  const weight = rows.find(r => r.label === 'Váha');
+  const bmi    = rows.find(r => r.label === 'BMI (počítáno)');
+  const rest   = rows.filter(r => r !== weight && r !== bmi);
+  const ordered = [weight, bmi, ...rest].filter(Boolean);
+
+  return (
+    <div>
+      <table className="w-full text-sm border-collapse">
+        <thead>
+          <tr>
+            <th className="text-left p-3 border-b border-slate-800">Metrika</th>
+            <th className="text-left p-3 border-b border-slate-800">Jedn.</th>
+            {dates.map((d, i) => (
+              <th key={i} className="text-right p-3 border-b border-slate-800 whitespace-nowrap">
+                {d}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {ordered.map((r, i) => (
+            <tr key={i} className={i % 2 ? 'bg-slate-900/40' : ''}>
+              <td className="p-3 border-b border-slate-800">{r.label}</td>
+              <td className="p-3 border-b border-slate-800 text-slate-400">{r.unit}</td>
+              {r.values.map((v, j) => (
+                <td key={j} className="p-3 border-b border-slate-800 text-right">{v}</td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
