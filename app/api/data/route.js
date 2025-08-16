@@ -2,15 +2,14 @@ import { NextResponse } from 'next/server';
 import { getMeasures } from '../../../lib/withings';
 
 const TYPE_MAP = {
-  1:   { name: 'Váha',        unit: 'kg',  dp: 2 },
-  6:   { name: 'Tuk (%)',     unit: '%',   dp: 1 },
-  8:   { name: 'Svaly (kg)',  unit: 'kg',  dp: 2 },
-  9:   { name: 'Voda (kg)',   unit: 'kg',  dp: 2 },
-  91:  { name: 'PWV',         unit: 'm/s', dp: 2 },
-  123: { name: 'Cévní věk',   unit: 'roky',dp: 0 },
+  1:   { name: 'Váha',       unit: 'kg',  dp: 2 },
+  6:   { name: 'Tuk (%)',    unit: '%',   dp: 1 },
+  8:   { name: 'Svaly (kg)', unit: 'kg',  dp: 2 },
+  9:   { name: 'Voda (kg)',  unit: 'kg',  dp: 2 },
+  91:  { name: 'PWV',        unit: 'm/s', dp: 2 },
+  123: { name: 'Cévní věk',  unit: 'roky',dp: 0 },
 };
-
-const ORDER = [1, 6, 8, 9, 91, 123];
+const ORDER = [1,6,8,9,91,123];
 
 function realValue(value, unit) {
   return value * Math.pow(10, unit);
@@ -21,29 +20,33 @@ export async function GET(req) {
   const at = searchParams.get('at');
   if (!at) return NextResponse.json({ status: 401, error: 'missing access token' });
 
+  // Načtení dat z Withings API
   const res = await getMeasures(at, ORDER);
   if (res.status !== 0) {
     return NextResponse.json({ status: res.status, error: 'withings error' });
   }
 
   const grps = res.body?.measuregrps || [];
-
-  // Unikátní timestampy, seřazené od nejnovějšího
   const seen = new Set();
   const cols = [];
-  [...grps].sort((a, b) => b.date - a.date).forEach(g => {
-    if (!seen.has(g.date)) { cols.push(g.date); seen.add(g.date); }
+
+  // seřadíme podle času (nejnovější první)
+  [...grps].sort((a,b)=>b.date-a.date).forEach(g => {
+    if (!seen.has(g.date)) {
+      cols.push(g.date);
+      seen.add(g.date);
+    }
   });
 
-  // limit=0 (nebo bez parametru) => všechno; jinak omezit počtem
-  const limitParam = parseInt(searchParams.get('limit') || '0', 10);
-  const selectedTs = (!Number.isNaN(limitParam) && limitParam > 0)
-    ? cols.slice(0, limitParam)
-    : cols;
+  // ⬅️ teď už NEomezujeme na 10, ale bereme všechny
+  const limited = cols;
 
-  const dates = selectedTs.map(ts => new Date(ts * 1000).toLocaleString('cs-CZ'));
+  // Převod na datum/čas v českém časovém pásmu
+  const dates = limited.map(ts => 
+    new Date(ts * 1000).toLocaleString('cs-CZ', { timeZone: 'Europe/Prague' })
+  );
 
-  // Přemapovat hodnoty podle typu a času
+  // Seřadíme hodnoty podle typu
   const byType = {};
   for (const g of grps) {
     const ts = g.date;
@@ -53,22 +56,18 @@ export async function GET(req) {
     }
   }
 
-  // Řádky v pořadí ORDER; u každého i 'type' kvůli spolehlivému řazení na klientu
+  // Připravíme řádky
   const rows = ORDER.map(t => {
     const meta = TYPE_MAP[t];
-    const vals = selectedTs.map(ts => {
+    const vals = limited.map(ts => {
       const v = byType[t]?.[ts];
       return v === undefined ? '' : v.toFixed(meta.dp);
     });
     return { type: t, label: meta.name, unit: meta.unit, values: vals };
   });
 
-  // KPI karty – první hodnoty z jednotlivých řádků (pokud existují)
-  const cards = rows.slice(0, 6).map(r => ({
-    label: r.label,
-    value: r.values[0],
-    unit: r.unit,
-  }));
+  // Karty nahoře
+  const cards = rows.slice(0,6).map(r=>({ label:r.label, value:r.values[0], unit:r.unit }));
 
   return NextResponse.json({ status: 0, dates, rows, cards });
 }
